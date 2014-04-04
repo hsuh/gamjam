@@ -1,11 +1,13 @@
 var tree, enemyTree;
-var delta = 1;
-var socket = io.connect('http://localhost:3004');
+var delta = 2;
+var socket = io.connect('http://it4se.com:8080');
 
 function joinGame (team) {
   $('#welcome').hide();
   $('#gamescreen').show();
 
+  $('#teamnumber').text('Team ' + team);
+ 
   socket.emit('playerUpdate', {
             "player": {
             "action" : "register",
@@ -36,20 +38,25 @@ var tHeight1 = 1;
 var tHeight2 = 1;
 socket.on('serverUpdate', function (data) {
 
-  console.log (data);
+  //console.log (data);
 
   switch (data.server.action) {
     case "gameStatus":
-      $("#gamestatus").text(data.server.message);
+      $("#gamestatus").prepend(data.server.message + '<br/>');
     break;
 
     case "treeStatus":
       tHeight1 = data.server.message.items[0].amount;
       tHeight2 = data.server.message.items[1].amount;
+      drawAgain();
+    break;
+
+    case "sunStatus":
+	$("#sun").css("transform", "rotate(" + data.server.message + "deg)");
     break;
 
     case "winner":
-      alert("The winner is team " + data.server.message)
+      alert("Team " + data.server.message + " is the winner!");
     break;
 }
 });
