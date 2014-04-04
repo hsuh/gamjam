@@ -1,11 +1,15 @@
 var app = require('http').createServer(handler);
 var io = require('socket.io').listen(app);
 var fs = require('fs');
+var delta = 0.2;
 
+var interval;
+
+var sunRot = Math.random() * 359;
 
 var trees = {"items": [
-    {"amount" : 1},
-    {"amount" : 1}
+    {"amount" : 20},
+    {"amount" : 20}
 ]};
 
 
@@ -17,34 +21,39 @@ var teams = {"items": [
 
 // handle incomming connections
 
-app.listen(3004);
+app.listen(8080);
 
 io.sockets.on('connection', function (socket) {
 
 
+	if (!interval) {
+		interval = setInterval (function () {
+
+		  sunRot += 3; if (sunRot >359) sunRot = 0;
+
+		  delta = delta/1.001;
+
+		  if (sunRot > 180) trees.items[1].amount += delta;
+		  else trees.items[0].amount += delta;
+
+		  publicMsg("sunStatus", sunRot);
+		  publicMsg("treeStatus", trees);
+
+ 	        if (trees.items[0].amount > 100) winEnd(1);
+	        else if (trees.items[1].amount > 100) winEnd(2);
+
+		}, 100);
+	}
+
 	socket.on('playerUpdate', function (data) {
 
-		//console.log (data);
+	        switch (data.player.action) {
 
-		switch (data.player.action) {
-      case "change":
-        console.log('amount', data.player.amount)
-        var temp0 = trees.items[data.player.tree-1].amount += data.player.amount;
-        var temp1 = trees.items[data.player.tree].amount += data.player.amount;
-
-        if(temp0 < 0 )
-          trees.items[data.player.tree-1].amount = 0;
-        else if(temp1 < 0) {
-          trees.items[data.player.tree].amount = 0;
-        }
-        else {
-          trees.items[data.player.tree-1].amount += data.player.amount;
-          if(trees.items[data.player.tree-1].amount > 100)
-            winEnd(1)
-          else if(trees.items[data.player.tree].amount > 100)
-            winEnd(2)
-        }
-      break;
+		        case "change":
+		        	trees.items[data.player.tree-1].amount += data.player.amount;
+			        if (trees.items[0].amount > 100) winEnd(1);
+			        else if (trees.items[1].amount > 100) winEnd(2);
+      		        break;
 
 			case "register":
 				publicMsg("gameStatus", "Player joined team " + data.player.team);
@@ -57,30 +66,26 @@ io.sockets.on('connection', function (socket) {
 				teams.items[data.player.team-1].amount --;
 			break;
 
-    case "reset":
+		}
+
+		//publicMsg("treeStatus", trees);
+
+	});
+
+  function winEnd (team){
+    publicMsg("winner", team);
       trees = {"items": [
-          {"amount" : 1},
-          {"amount" : 1}
+          {"amount" : 20},
+          {"amount" : 20}
       ]};
+
+	delta = 0.2;
 
 
       teams = {"items": [
           {"amount" : 1},
           {"amount" : 1}
       ]};
-    break;
-
-
-
-		}
-
-
-		publicMsg("treeStatus", trees);
-
-	});
-
-  function winEnd(team){
-    publicMsg("winner", team);
   }
 
 
@@ -121,7 +126,6 @@ io.sockets.on('connection', function (socket) {
 
 });
 
-
 // this serves HTML files etc
 
 function handler (req, res) {
@@ -136,4 +140,3 @@ function handler (req, res) {
     res.end(data);
   });
 }
-
